@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>M+ Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --gold: #d4a840;
+  --gold-bright: #f5cc55;
+  --gold-dim: #a07830;
+  --bg-deep: #07090e;
+  --bg-sidebar: #0a0e18;
+  --bg-panel: #0d1220;
+  --bg-input: #0a1020;
+  --border: #263550;
+  --border-glow: #3a5488;
+  --text: #ddeaff;
+  --text-dim: #9aaece;
+  --text-bright: #f0f6ff;
+  --text-muted: #6a82a8;
+  --mythic: #ff8c00;
+  --epic: #a335ee;
+  --rare: #0090ff;
+  --uncommon: #1eff00;
+  --green: #1eff00;
+  /* push indicator colours */
+  --push-ok:      #1eff00;
+  --push-behind:  #ff6b35;
+  --push-missing: #ff3333;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Rajdhani', sans-serif;
+  background: var(--bg-deep); color: var(--text);
+  min-height: 100vh; display: flex; overflow-x: hidden;
+}
+body::before {
+  content: ''; position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse 60% 40% at 20% 0%,  rgba(30,70,150,0.12)  0%, transparent 70%),
+    radial-gradient(ellipse 50% 60% at 80% 100%, rgba(60,20,100,0.08)  0%, transparent 60%);
+  pointer-events: none; z-index: 0;
+}
+
+/* ── Layout ── */
+.sidebar {
+  width: 260px; min-width: 260px;
+  background: var(--bg-sidebar); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  position: fixed; top: 0; left: 0; bottom: 0; z-index: 10; overflow-y: auto;
+}
+.main {
+  margin-left: 260px; flex: 1; min-width: 0;
+  position: relative; z-index: 1; padding: 28px 28px 60px;
+}
+
+/* ── Sidebar header ── */
+.sidebar-header { padding: 20px 16px 16px; border-bottom: 1px solid var(--border); }
+.sidebar-logo {
+  font-family: 'Cinzel', serif; font-size: 17px; font-weight: 900;
+  color: var(--gold-bright); letter-spacing: 2px;
+  text-shadow: 0 0 20px rgba(240,192,96,0.35);
+  display: flex; align-items: center; gap: 8px;
+}
+.sidebar-logo span { font-size: 20px; }
+.sidebar-sub { font-size: 10px; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase; margin-top: 3px; }
+
+/* ── Affixes widget ── */
+.affixes-widget { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+.affixes-label  { font-size: 9px; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; }
+.affixes-list   { display: flex; flex-direction: column; gap: 6px; }
+.affix-item     { display: flex; align-items: flex-start; gap: 8px; }
+.affix-icon     { width: 22px; height: 22px; border-radius: 4px; object-fit: cover; flex-shrink: 0; border: 1px solid var(--border); }
+.affix-icon-placeholder {
+  width: 22px; height: 22px; border-radius: 4px; background: var(--border);
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px;
+}
+.affix-name { font-size: 12px; font-weight: 700; color: var(--text-bright); }
+.affix-desc { font-size: 10px; color: var(--text-muted); line-height: 1.3; }
+
+/* ── Add character form ── */
+.add-char-form { padding: 14px 14px 10px; border-bottom: 1px solid var(--border); }
+.form-label { font-size: 10px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; display: block; }
+.form-row   { display: flex; gap: 6px; margin-bottom: 6px; }
+.form-input {
+  background: var(--bg-input); border: 1px solid var(--border);
+  color: var(--text-bright); font-family: 'Rajdhani', sans-serif;
+  font-size: 13px; font-weight: 600; padding: 7px 10px;
+  border-radius: 4px; width: 100%; transition: border-color 0.2s; outline: none;
+}
+.form-input:focus { border-color: var(--border-glow); }
+.form-input::placeholder { color: var(--text-muted); font-weight: 400; }
+.form-select {
+  background: var(--bg-input); border: 1px solid var(--border);
+  color: var(--text-bright); font-family: 'Rajdhani', sans-serif;
+  font-size: 12px; padding: 7px 8px; border-radius: 4px; min-width: 60px; outline: none; cursor: pointer;
+}
+.btn-add {
+  background: linear-gradient(135deg, #1a3060, #0d1c3a);
+  border: 1px solid var(--border-glow); color: var(--gold);
+  font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 700;
+  letter-spacing: 1px; padding: 7px 12px; border-radius: 4px;
+  cursor: pointer; text-transform: uppercase; white-space: nowrap; transition: all 0.2s;
+}
+.btn-add:hover { color: var(--gold-bright); box-shadow: 0 0 10px rgba(200,164,90,0.15); }
+.group-target-row { display: flex; gap: 6px; }
+.group-select-add {
+  background: var(--bg-input); border: 1px solid var(--border);
+  color: var(--text-bright); font-family: 'Rajdhani', sans-serif;
+  font-size: 12px; padding: 7px 8px; border-radius: 4px; flex: 1; outline: none; cursor: pointer;
+}
+
+/* ── Groups ── */
+.groups-container { flex: 1; padding: 10px 0; overflow-y: auto; }
+.group-header {
+  display: flex; align-items: center; padding: 8px 14px;
+  cursor: pointer; user-select: none; gap: 6px;
+}
+.group-header:hover { background: rgba(255,255,255,0.03); }
+.group-toggle { font-size: 10px; color: var(--text-muted); transition: transform 0.2s; flex-shrink: 0; }
+.group-toggle.open { transform: rotate(90deg); }
+.group-name-text { font-size: 11px; font-weight: 700; color: var(--text-bright); letter-spacing: 2px; text-transform: uppercase; flex: 1; }
+.group-actions { display: flex; gap: 4px; opacity: 0; transition: opacity 0.15s; }
+.group-header:hover .group-actions { opacity: 1; }
+.btn-icon {
+  background: none; border: none; color: var(--text-muted); cursor: pointer;
+  font-size: 12px; padding: 2px 4px; border-radius: 3px; transition: color 0.15s, background 0.15s; line-height: 1;
+}
+.btn-icon:hover { color: var(--text-bright); background: rgba(255,255,255,0.08); }
+.btn-icon.danger:hover { color: #ff6b6b; }
+.group-chars { overflow: hidden; transition: max-height 0.25s ease; }
+.char-entry {
+  display: flex; align-items: center; padding: 6px 14px 6px 30px;
+  cursor: pointer; gap: 8px; border-left: 2px solid transparent;
+  transition: background 0.15s, border-color 0.15s;
+}
+.char-entry:hover { background: rgba(255,255,255,0.04); }
+.char-entry.active { background: rgba(255,255,255,0.06); border-left-color: var(--gold-dim); }
+.char-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.char-entry-name { font-size: 13px; font-weight: 600; color: var(--text-bright); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.char-entry-realm { font-size: 10px; color: var(--text-dim); letter-spacing: 1px; }
+.char-remove {
+  background: none; border: none; color: var(--text-muted); cursor: pointer;
+  font-size: 14px; padding: 0 2px; border-radius: 3px; opacity: 0; transition: opacity 0.15s, color 0.15s; line-height: 1;
+}
+.char-entry:hover .char-remove { opacity: 1; }
+.char-remove:hover { color: #ff6b6b !important; }
+.add-group-form { padding: 10px 14px; border-top: 1px solid var(--border); }
+.add-group-row  { display: flex; gap: 6px; }
+.sidebar-refresh { padding: 12px 14px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
+.btn-refresh {
+  background: linear-gradient(135deg, #1a3060, #0d1c3a);
+  border: 1px solid var(--border-glow); color: var(--gold);
+  font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 700;
+  letter-spacing: 2px; padding: 9px; border-radius: 4px;
+  cursor: pointer; text-transform: uppercase; transition: all 0.2s; width: 100%;
+}
+.btn-refresh:hover { color: var(--gold-bright); box-shadow: 0 0 10px rgba(200,164,90,0.15); }
+.btn-refresh:disabled { opacity: 0.4; cursor: not-allowed; }
+.last-updated { font-size: 10px; color: var(--text-muted); letter-spacing: 1px; text-align: center; }
+
+/* ── Main header ── */
+.main-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid var(--border);
+  gap: 16px; flex-wrap: wrap;
+}
+.view-title   { font-family: 'Cinzel', serif; font-size: 20px; font-weight: 700; color: var(--text-bright); letter-spacing: 2px; }
+.view-subtitle { font-size: 11px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; margin-top: 3px; }
+
+/* ── Section labels ── */
+.section-label {
+  font-family: 'Cinzel', serif; font-size: 11px; font-weight: 700;
+  color: var(--gold); letter-spacing: 3px; text-transform: uppercase;
+  margin-bottom: 14px; display: flex; align-items: center; gap: 10px;
+}
+.section-label::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--border), transparent); }
+
+/* ── Character cards ── */
+.chars-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; margin-bottom: 30px; }
+.char-card {
+  background: var(--bg-panel); border: 1px solid var(--border);
+  border-radius: 8px; padding: 18px; position: relative; overflow: hidden;
+  transition: border-color 0.25s, transform 0.2s;
+}
+.char-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: var(--char-color, var(--gold-dim)); opacity: 0.9;
+}
+.char-card:hover { border-color: var(--border-glow); transform: translateY(-1px); }
+.char-name  { font-family: 'Cinzel', serif; font-size: 16px; font-weight: 700; color: var(--char-color, var(--text-bright)); margin-bottom: 2px; }
+.char-spec  { font-size: 11px; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 14px; }
+.char-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.stat-block { background: rgba(0,0,0,0.35); border: 1px solid var(--border); border-radius: 5px; padding: 8px 10px; }
+.stat-label { font-size: 10px; color: var(--text-dim); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 3px; }
+.stat-value { font-size: 20px; font-weight: 700; line-height: 1; }
+.stat-value.ilvl  { color: var(--gold-bright); }
+.stat-value.score { font-size: 17px; color: var(--char-color, var(--text-bright)); }
+.keystone-badge {
+  margin-top: 12px; background: rgba(0,0,0,0.4); border: 1px solid var(--border);
+  border-radius: 5px; padding: 7px 10px;
+  display: flex; align-items: center; justify-content: space-between; gap: 6px;
+}
+.keystone-label { font-size: 10px; color: var(--text-dim); letter-spacing: 1.5px; text-transform: uppercase; white-space: nowrap; }
+.keystone-value { font-size: 13px; font-weight: 700; color: var(--mythic); white-space: nowrap; }
+
+/* Raid prog */
+.raid-prog { margin-top: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 5px; padding: 6px 10px; }
+.raid-prog-label { font-size: 9px; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; }
+.raid-tier-row   { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+.raid-tier-name  { font-size: 10px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.raid-tier-progress { font-size: 11px; font-weight: 700; white-space: nowrap; }
+.prog-mythic { color: var(--mythic); }
+.prog-heroic { color: #9b59b6; }
+.prog-normal { color: #27ae60; }
+.prog-none   { color: var(--text-muted); }
+
+/* ── Dungeon table ── */
+.dungeon-section { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 24px; }
+.table-header {
+  background: rgba(0,0,0,0.5); border-bottom: 1px solid var(--border);
+  padding: 10px 16px; font-size: 11px; font-weight: 700;
+  letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim);
+  display: grid; gap: 8px; align-items: center;
+}
+.dungeon-row {
+  display: grid; gap: 8px; padding: 0 16px;
+  border-bottom: 1px solid rgba(38,53,80,0.5);
+  align-items: center; min-height: 52px; transition: background 0.15s; cursor: pointer;
+}
+.dungeon-row:last-child { border-bottom: none; }
+.dungeon-row:hover { background: rgba(255,255,255,0.025); }
+.dungeon-row.highlighted { background: rgba(200,164,90,0.08) !important; border-left: 2px solid var(--gold-dim); }
+.dungeon-name {
+  font-size: 12px; font-weight: 600; color: var(--text-bright);
+  display: flex; align-items: center; gap: 8px;
+}
+.dungeon-icon {
+  width: 26px; height: 26px; border-radius: 3px; background: var(--border);
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 15px;
+}
+.dungeon-name-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Single run cell per character */
+.run-cell {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 6px 4px; gap: 2px; border-radius: 4px;
+}
+.run-cell.run-best { background: rgba(255,255,255,0.03); }
+.run-level { font-size: 15px; font-weight: 700; line-height: 1; color: var(--text-bright); }
+.run-level.timed { color: var(--mythic); }
+.run-upgrades { font-size: 9px; color: #5590dd; letter-spacing: 0.5px; }
+.run-score  { font-size: 11px; font-weight: 600; line-height: 1; }
+.run-empty  { color: var(--text-muted); font-size: 16px; text-align: center; }
+.score-mythic   { color: var(--mythic); }
+.score-epic     { color: var(--epic); }
+.score-rare     { color: var(--rare); }
+.score-uncommon { color: var(--uncommon); }
+.score-none     { color: var(--text-muted); }
+
+/* ── Push indicator (per cell) ── */
+/* small badge under each run cell showing gap vs group best */
+.push-badge {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.5px;
+  padding: 1px 5px; border-radius: 3px; margin-top: 2px;
+  white-space: nowrap;
+}
+.push-leader  { color: var(--push-ok);     background: rgba(30,255,0,0.10);  border: 1px solid rgba(30,255,0,0.25); }
+.push-close   { color: #f0d060;            background: rgba(240,208,96,0.10); border: 1px solid rgba(240,208,96,0.25); }
+.push-behind  { color: var(--push-behind); background: rgba(255,107,53,0.12); border: 1px solid rgba(255,107,53,0.3); }
+.push-missing { color: var(--push-missing);background: rgba(255,51,51,0.10);  border: 1px solid rgba(255,51,51,0.3); }
+
+/* ── Push summary legend (above table) ── */
+.push-legend {
+  display: flex; gap: 16px; align-items: center;
+  padding: 10px 16px 4px; flex-wrap: wrap;
+}
+.push-legend-item { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--text-dim); letter-spacing: 1px; }
+.push-legend-dot  { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── Loading / Error / Empty ── */
+.loading-overlay {
+  position: fixed; inset: 0; background: rgba(7,9,14,0.92);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 200; gap: 18px;
+}
+.spinner {
+  width: 44px; height: 44px; border: 3px solid var(--border);
+  border-top-color: var(--gold); border-radius: 50%; animation: spin 0.75s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text {
+  font-family: 'Cinzel', serif; font-size: 12px; color: var(--gold-dim);
+  letter-spacing: 4px; text-transform: uppercase; animation: pulse 1.4s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
+.error-banner {
+  background: rgba(160,30,30,0.15); border: 1px solid rgba(180,40,40,0.35);
+  border-radius: 6px; padding: 12px 16px; font-size: 12px; color: #ff8888;
+  margin-bottom: 18px; display: none; line-height: 1.5;
+}
+.empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); font-size: 13px; letter-spacing: 1px; }
+.empty-state strong { display: block; font-family: 'Cinzel', serif; font-size: 15px; color: var(--text-dim); margin-bottom: 8px; letter-spacing: 2px; }
+.no-data { color: var(--text-muted); font-size: 12px; padding: 20px; text-align: center; letter-spacing: 1px; }
+
+/* ── Modal ── */
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 150; display: none; align-items: center; justify-content: center; }
+.modal-backdrop.open { display: flex; }
+.modal { background: var(--bg-panel); border: 1px solid var(--border-glow); border-radius: 10px; padding: 24px; width: 320px; max-width: 90vw; }
+.modal-title { font-family: 'Cinzel', serif; font-size: 14px; font-weight: 700; color: var(--gold-bright); letter-spacing: 2px; margin-bottom: 16px; }
+.modal-btns  { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
+.btn-cancel  { background: none; border: 1px solid var(--border); color: var(--text-dim); font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 1px; padding: 8px 16px; border-radius: 4px; cursor: pointer; text-transform: uppercase; transition: all 0.2s; }
+.btn-cancel:hover { border-color: var(--border-glow); color: var(--text-bright); }
+.btn-confirm { background: linear-gradient(135deg, #1a3060, #0d1c3a); border: 1px solid var(--border-glow); color: var(--gold); font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1px; padding: 8px 16px; border-radius: 4px; cursor: pointer; text-transform: uppercase; transition: all 0.2s; }
+.btn-confirm:hover { color: var(--gold-bright); }
+
+/* ── Footer / misc ── */
+.fade-in { animation: fadeIn 0.35s ease forwards; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+.footer { text-align: center; margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--border); font-size: 10px; color: var(--text-muted); letter-spacing: 2px; }
+.footer a { color: var(--gold-dim); text-decoration: none; transition: color 0.2s; }
+.footer a:hover { color: var(--gold-bright); }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">Loading…</div>
+</div>
+
+<div class="modal-backdrop" id="renameModal">
+  <div class="modal">
+    <div class="modal-title">Rename Group</div>
+    <input class="form-input" id="renameInput" placeholder="Group name…" maxlength="30" />
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeRenameModal()">Cancel</button>
+      <button class="btn-confirm" onclick="confirmRename()">Rename</button>
+    </div>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo"><span>⚔️</span> M+ Tracker</div>
+    <div class="sidebar-sub">Mythic+ Dashboard</div>
+  </div>
+
+  <div class="affixes-widget" id="affixesWidget">
+    <div class="affixes-label">This Week's Affixes</div>
+    <div class="affixes-list" id="affixesList">
+      <div style="font-size:11px;color:var(--text-muted)">Loading…</div>
+    </div>
+  </div>
+
+  <div class="add-char-form">
+    <label class="form-label">Add Character</label>
+    <div class="form-row">
+      <input class="form-input" id="inputName" placeholder="Name" maxlength="30" />
+    </div>
+    <div class="form-row">
+      <input class="form-input" id="inputRealm" placeholder="Realm" maxlength="40" style="flex:1" />
+      <select class="form-select" id="inputRegion">
+        <option value="us">US</option>
+        <option value="eu">EU</option>
+        <option value="kr">KR</option>
+        <option value="tw">TW</option>
+        <option value="cn">CN</option>
+      </select>
+    </div>
+    <div class="group-target-row" style="margin-bottom:6px">
+      <select class="group-select-add" id="inputGroup"></select>
+      <button class="btn-add" onclick="addCharacter()">+ Add</button>
+    </div>
+  </div>
+
+  <div class="groups-container" id="groupsContainer"></div>
+
+  <div class="add-group-form">
+    <div class="add-group-row">
+      <input class="form-input" id="inputGroupName" placeholder="New group name…" maxlength="30" />
+      <button class="btn-add" onclick="addGroup()" style="padding:7px 10px;">+</button>
+    </div>
+  </div>
+
+  <div class="sidebar-refresh">
+    <button class="btn-refresh" id="refreshBtn" onclick="loadActiveGroup()">↻ Refresh Data</button>
+    <div class="last-updated" id="lastUpdated">—</div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+  <div class="main-header">
+    <div>
+      <div class="view-title" id="viewTitle">Select a Group</div>
+      <div class="view-subtitle" id="viewSubtitle">Choose a group from the sidebar</div>
+    </div>
+  </div>
+  <div class="error-banner" id="errorBanner"></div>
+  <div id="mainContent">
+    <div class="empty-state">
+      <strong>Welcome to M+ Tracker</strong>
+      Add characters using the sidebar and select a group to get started.
+    </div>
+  </div>
+  <div class="footer" id="mainFooter" style="display:none">
+    Data from <a href="https://raider.io" target="_blank">Raider.IO</a> &nbsp;·&nbsp;
+    Click any dungeon row to highlight it across all characters
+  </div>
+</main>
+
+<script>
+// ═══════════════════════════════════
+//  STATE
+// ═══════════════════════════════════
+const STORAGE_KEY = 'mplus_tracker_v1';
+let state = {
+  groups: [],
+  activeGroupId: null,
+  collapsed: {},
+};
+function saveState() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e){} }
+function loadState()  {
+  try { const s=localStorage.getItem(STORAGE_KEY); if(s) state={...state,...JSON.parse(s)}; } catch(e){}
+}
+
+// ═══════════════════════════════════
+//  CLASS COLOURS
+// ═══════════════════════════════════
+const CLASS_COLORS = {
+  'Death Knight':'#c41e3a','Demon Hunter':'#a330c9','Druid':'#ff7c0a',
+  'Evoker':'#33937f','Hunter':'#aad372','Mage':'#3fc7eb','Monk':'#00ff98',
+  'Paladin':'#f48cba','Priest':'#ffffff','Rogue':'#fff468','Shaman':'#0070dd',
+  'Warlock':'#8788ee','Warrior':'#c69b3a',
+};
+function classColor(cls) { return CLASS_COLORS[cls] || '#aabbcc'; }
+
+// ═══════════════════════════════════
+//  DUNGEON ICONS
+// ═══════════════════════════════════
+const DUNGEON_ICONS = {
+  'Ara-Kara, City of Echoes':'🕸️','City of Threads':'🧵','The Stonevault':'⛏️',
+  'Grim Batol':'🔥','The Dawnbreaker':'☀️','Mists of Tirna Scithe':'🌿',
+  'The Necrotic Wake':'💀','Siege of Boralus':'⚓','Darkflame Cleft':'🕯️',
+  'Cinderbrew Meadery':'🍺','Operation: Floodgate':'💧','Priory of the Sacred Flame':'🔱',
+  'The Rookery':'🦅','Mechagon Workshop':'⚙️','Theater of Pain':'🎭','Sanguine Depths':'🩸',
+  'Seat of the Triumvirate':'👁️','Skyreach':'🌪️','Magister\'s Terrace':'🏯',
+  'Maisara Caverns':'🪨','Pit of Saron':'❄️','Windrunner Spire':'🏹',
+  'Nexus-Point Xenolith':'🔮','Algeth\'ar Academy':'🎓',
+};
+
+// Affixes to hide — these are always present and not interesting per-week
+const HIDDEN_AFFIXES = new Set(['Fortified','Tyrannical',"Xal'atath's Guile"]);
+
+// ═══════════════════════════════════
+//  API
+// ═══════════════════════════════════
+const FIELDS = [
+  'mythic_plus_scores_by_season:current',
+  'mythic_plus_best_runs',
+  'mythic_plus_alternate_runs',
+  'mythic_plus_weekly_highest_level_runs',
+  'raid_progression',
+  'gear','class','spec',
+].join(',');
+
+async function fetchChar(char) {
+  const n = encodeURIComponent(char.name);
+  const r = encodeURIComponent(char.realm.toLowerCase().replace(/ /g,'-'));
+  const url = `https://raider.io/api/v1/characters/profile?region=${char.region}&realm=${r}&name=${n}&fields=${FIELDS}`;
+  const res = await fetch(url);
+  if (!res.ok) { const b=await res.json().catch(()=>({})); throw new Error(b.message||`HTTP ${res.status}`); }
+  return res.json();
+}
+
+async function fetchAffixes(region) {
+  const res = await fetch(`https://raider.io/api/v1/mythic-plus/affixes?region=${region}&locale=en`);
+  if (!res.ok) throw new Error('affixes failed');
+  return res.json();
+}
+
+// ═══════════════════════════════════
+//  AFFIXES
+// ═══════════════════════════════════
+const AFFIX_EMOJI = {
+  'Bolstering':'📈','Bursting':'💥','Grievous':'🩸','Incorporeal':'👻',
+  'Raging':'😡','Sanguine':'🩸','Spiteful':'😈','Storming':'🌪️','Volcanic':'🌋',
+  'Afflicted':'🤢','Entangling':'🌿','Overflowing':'💧','Quaking':'🌍',
+  'Necrotic':'☠️','Explosive':'💣','Inspiring':'✨',
+  "Xal'atath's Bargain: Ascendant":'🌀',"Xal'atath's Bargain: Voidbound":'🌑',
+  "Xal'atath's Bargain: Devour":'🌀',"Xal'atath's Bargain: Oblivion":'🌑',
+  "Lindormi's Guidance":'⭐',
+};
+
+async function loadAffixes() {
+  try {
+    const data = await fetchAffixes('us');
+    const list = document.getElementById('affixesList');
+    const details = (data.affix_details||[]).filter(a => !HIDDEN_AFFIXES.has(a.name));
+    if (!details.length) {
+      list.innerHTML = '<div style="font-size:11px;color:var(--text-muted)">No variable affixes this week</div>';
+      return;
+    }
+    list.innerHTML = details.map(a => {
+      const emoji = AFFIX_EMOJI[a.name] || '🔮';
+      const iconHtml = a.icon
+        ? `<img class="affix-icon" src="https://assets.rpglogs.com/img/warcraft/abilities/${a.icon}.jpg"
+             onerror="this.style.display='none';this.nextSibling.style.display='flex'" alt="" />
+           <div class="affix-icon-placeholder" style="display:none">${emoji}</div>`
+        : `<div class="affix-icon-placeholder">${emoji}</div>`;
+      return `<div class="affix-item">
+        ${iconHtml}
+        <div>
+          <div class="affix-name">${escHtml(a.name)}</div>
+          <div class="affix-desc">${escHtml((a.description||'').substring(0,80))}${(a.description||'').length>80?'…':''}</div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    document.getElementById('affixesList').innerHTML='<div style="font-size:11px;color:var(--text-muted)">Could not load affixes</div>';
+  }
+}
+
+// ═══════════════════════════════════
+//  SIDEBAR
+// ═══════════════════════════════════
+const profileCache = {};
+function charKey(c) { return `${c.region}:${c.realm.toLowerCase()}:${c.name.toLowerCase()}`; }
+
+function renderSidebar() {
+  const container = document.getElementById('groupsContainer');
+  const groupSel  = document.getElementById('inputGroup');
+  container.innerHTML = ''; groupSel.innerHTML = '';
+
+  state.groups.forEach(group => {
+    const collapsed = state.collapsed[group.id];
+    const sec = document.createElement('div');
+    sec.className='group-section'; sec.dataset.gid=group.id;
+
+    const hdr = document.createElement('div');
+    hdr.className='group-header';
+    hdr.innerHTML=`
+      <span class="group-toggle ${collapsed?'':'open'}">▶</span>
+      <span class="group-name-text">${escHtml(group.name)}</span>
+      <div class="group-actions">
+        <button class="btn-icon" title="Rename" onclick="openRenameModal('${group.id}',event)">✎</button>
+        <button class="btn-icon danger" title="Delete" onclick="deleteGroup('${group.id}',event)">✕</button>
+      </div>`;
+    hdr.addEventListener('click', e=>{
+      if (e.target.closest('.group-actions')) return;
+      state.collapsed[group.id]=!state.collapsed[group.id];
+      saveState(); renderSidebar(); setActiveGroup(group.id);
+    });
+
+    const charsDiv = document.createElement('div');
+    charsDiv.className='group-chars';
+    charsDiv.style.maxHeight = collapsed?'0':'1000px';
+
+    group.chars.forEach((char,ci)=>{
+      const color = profileCache[charKey(char)]?.classColor||'#4a5a75';
+      const entry = document.createElement('div');
+      entry.className='char-entry'+(state.activeGroupId===group.id?' active':'');
+      entry.innerHTML=`
+        <div class="char-dot" style="background:${color}"></div>
+        <div>
+          <div class="char-entry-name">${escHtml(char.name)}</div>
+          <div class="char-entry-realm">${escHtml(char.realm)} · ${char.region.toUpperCase()}</div>
+        </div>
+        <button class="char-remove" title="Remove" onclick="removeChar('${group.id}',${ci},event)">✕</button>`;
+      charsDiv.appendChild(entry);
+    });
+
+    if (!group.chars.length) {
+      const emp=document.createElement('div');
+      emp.style.cssText='padding:6px 14px 6px 30px;font-size:11px;color:var(--text-muted);letter-spacing:1px;';
+      emp.textContent='No characters'; charsDiv.appendChild(emp);
+    }
+    sec.appendChild(hdr); sec.appendChild(charsDiv); container.appendChild(sec);
+
+    const opt=document.createElement('option'); opt.value=group.id; opt.textContent=group.name;
+    groupSel.appendChild(opt);
+  });
+}
+
+function setActiveGroup(gid) { state.activeGroupId=gid; saveState(); loadActiveGroup(); }
+
+// ═══════════════════════════════════
+//  GROUP / CHAR MANAGEMENT
+// ═══════════════════════════════════
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function addGroup() {
+  const inp=document.getElementById('inputGroupName');
+  const name=inp.value.trim(); if(!name) return;
+  state.groups.push({id:'g'+Date.now(),name,chars:[]}); saveState(); inp.value=''; renderSidebar();
+}
+
+let renamingGroupId=null;
+function openRenameModal(gid,e) {
+  e.stopPropagation(); renamingGroupId=gid;
+  const g=state.groups.find(g=>g.id===gid);
+  document.getElementById('renameInput').value=g?.name||'';
+  document.getElementById('renameModal').classList.add('open');
+  setTimeout(()=>document.getElementById('renameInput').focus(),50);
+}
+function closeRenameModal() { renamingGroupId=null; document.getElementById('renameModal').classList.remove('open'); }
+function confirmRename() {
+  const name=document.getElementById('renameInput').value.trim();
+  if(!name||!renamingGroupId) return closeRenameModal();
+  const g=state.groups.find(g=>g.id===renamingGroupId);
+  if(g){g.name=name;saveState();renderSidebar();} closeRenameModal();
+}
+function deleteGroup(gid,e) {
+  e.stopPropagation();
+  if(!confirm('Delete this group and all its characters?')) return;
+  state.groups=state.groups.filter(g=>g.id!==gid);
+  if(state.activeGroupId===gid) state.activeGroupId=state.groups[0]?.id||null;
+  saveState(); renderSidebar();
+  if(state.activeGroupId) loadActiveGroup(); else renderEmptyState();
+}
+function addCharacter() {
+  const name=document.getElementById('inputName').value.trim();
+  const realm=document.getElementById('inputRealm').value.trim();
+  const region=document.getElementById('inputRegion').value;
+  const gid=document.getElementById('inputGroup').value;
+  if(!name||!realm) return;
+  const g=state.groups.find(g=>g.id===gid); if(!g) return;
+  if(g.chars.some(c=>c.name.toLowerCase()===name.toLowerCase()&&c.realm.toLowerCase()===realm.toLowerCase())){
+    showError(`${name} on ${realm} is already in this group.`); return;
+  }
+  g.chars.push({name,realm,region}); saveState();
+  document.getElementById('inputName').value='';
+  // Keep the group dropdown on the same group the user just added to
+  renderSidebar();
+  document.getElementById('inputGroup').value=gid;
+  // Only reload the main view if this group is already the active one
+  if(state.activeGroupId===gid) loadActiveGroup();
+}
+function removeChar(gid,ci,e) {
+  e.stopPropagation();
+  const g=state.groups.find(g=>g.id===gid); if(!g) return;
+  if(!confirm(`Remove ${g.chars[ci].name} from ${g.name}?`)) return;
+  g.chars.splice(ci,1); saveState(); renderSidebar();
+  if(state.activeGroupId===gid) loadActiveGroup();
+}
+function showError(msg) {
+  const b=document.getElementById('errorBanner');
+  b.textContent=msg; b.style.display='block';
+  setTimeout(()=>{b.style.display='none';},4000);
+}
+
+// ═══════════════════════════════════
+//  LOAD GROUP
+// ═══════════════════════════════════
+async function loadActiveGroup() {
+  const group=state.groups.find(g=>g.id===state.activeGroupId);
+  if(!group){renderEmptyState();return;}
+  const btn=document.getElementById('refreshBtn');
+  const overlay=document.getElementById('loadingOverlay');
+  const errBanner=document.getElementById('errorBanner');
+  btn.disabled=true; errBanner.style.display='none';
+
+  if(!group.chars.length){
+    document.getElementById('viewTitle').textContent=group.name;
+    document.getElementById('viewSubtitle').textContent='Add characters using the sidebar';
+    document.getElementById('mainContent').innerHTML='<div class="empty-state"><strong>Empty Group</strong>Add characters using the form on the left.</div>';
+    document.getElementById('mainFooter').style.display='none';
+    btn.disabled=false; return;
+  }
+
+  overlay.style.display='flex';
+  document.getElementById('loadingText').textContent=`Loading ${group.name}…`;
+
+  try {
+    const results=await Promise.allSettled(group.chars.map(fetchChar));
+    const profiles=results.map((r,i)=>{
+      if(r.status==='fulfilled'){
+        const p=r.value; p.classColor=classColor(p.class);
+        profileCache[charKey(group.chars[i])]=p; return p;
+      } return null;
+    });
+    const errors=results.map((r,i)=>r.status==='rejected'?`${group.chars[i].name}: ${r.reason.message}`:null).filter(Boolean);
+    if(errors.length){errBanner.innerHTML='⚠ Could not load: '+errors.join(' · ');errBanner.style.display='block';}
+    if(!profiles.some(Boolean)) throw new Error('No profiles loaded.');
+
+    renderSidebar();
+    const valid=profiles.filter(Boolean);
+    document.getElementById('viewTitle').textContent=group.name;
+    document.getElementById('viewSubtitle').textContent=`${valid.length} character${valid.length!==1?'s':''} loaded`;
+    document.getElementById('mainFooter').style.display='block';
+
+    document.getElementById('mainContent').innerHTML=`
+      <div class="section-label">Character Overview</div>
+      <div class="chars-grid" id="charsGrid"></div>
+      <div class="section-label">Dungeon Best Runs</div>
+      <div class="dungeon-section">
+        <div class="push-legend">
+          <div class="push-legend-item"><div class="push-legend-dot" style="background:var(--push-ok)"></div>Group best</div>
+          <div class="push-legend-item"><div class="push-legend-dot" style="background:#f0d060"></div>Within 1 level</div>
+          <div class="push-legend-item"><div class="push-legend-dot" style="background:var(--push-behind)"></div>2+ levels behind</div>
+          <div class="push-legend-item"><div class="push-legend-dot" style="background:var(--push-missing)"></div>Not completed</div>
+        </div>
+        <div class="table-header" id="tableHeader"></div>
+        <div id="dungeonRows"></div>
+      </div>`;
+
+    renderChars(profiles);
+    renderDungeons(profiles);
+    document.getElementById('lastUpdated').textContent='Updated '+new Date().toLocaleTimeString();
+  } catch(err) {
+    errBanner.innerHTML='❌ '+err.message; errBanner.style.display='block';
+  } finally {
+    overlay.style.display='none'; btn.disabled=false;
+  }
+}
+
+function renderEmptyState() {
+  document.getElementById('viewTitle').textContent='No Group Selected';
+  document.getElementById('viewSubtitle').textContent='Choose a group from the sidebar';
+  document.getElementById('mainContent').innerHTML=`<div class="empty-state"><strong>Welcome to M+ Tracker</strong>Create a group and add characters to get started.</div>`;
+  document.getElementById('mainFooter').style.display='none';
+}
+
+// ═══════════════════════════════════
+//  RENDER CHARACTERS
+// ═══════════════════════════════════
+function renderChars(profiles) {
+  const grid=document.getElementById('charsGrid'); grid.innerHTML='';
+  profiles.forEach((p,i)=>{
+    if(!p) return;
+    const color=p.classColor;
+    const score=p.mythic_plus_scores_by_season?.[0]?.scores?.all??0;
+    const ilvl=p.gear?.item_level_equipped??'—';
+    const spec=p.active_spec_name??'';
+    const cls=p.class??'';
+    const ks=p.mythic_plus_weekly_highest_level_runs?.[0];
+    const ksText=ks?`${ks.short_name} +${ks.mythic_level}`:'None this week';
+    const rioUrl=`https://raider.io/characters/${p.region||'us'}/${encodeURIComponent(p.realm||'')}/${encodeURIComponent(p.name)}`;
+    const raidHtml=buildRaidProgHtml(p.raid_progression||{});
+    const div=document.createElement('div');
+    div.className='char-card fade-in'; div.style.cssText=`--char-color:${color};animation-delay:${i*0.08}s`;
+    div.innerHTML=`
+      <a href="${rioUrl}" target="_blank" style="text-decoration:none"><div class="char-name">${escHtml(p.name)}</div></a>
+      <div class="char-spec">${escHtml(spec)} ${escHtml(cls)}</div>
+      <div class="char-stats">
+        <div class="stat-block"><div class="stat-label">Item Level</div><div class="stat-value ilvl">${ilvl}</div></div>
+        <div class="stat-block"><div class="stat-label">M+ Score</div><div class="stat-value score">${Math.round(score)}</div></div>
+      </div>
+      <div class="keystone-badge">
+        <span class="keystone-label">Best This Week</span>
+        <span class="keystone-value">${escHtml(ksText)}</span>
+      </div>
+      ${raidHtml}`;
+    grid.appendChild(div);
+  });
+}
+
+function buildRaidProgHtml(raidProg) {
+  const tiers=Object.entries(raidProg)
+    .map(([slug,data])=>({slug,data}))
+    .filter(e=>e.data&&e.data.summary&&e.data.summary!=='0/0');
+  if(!tiers.length) return '';
+  const rows=tiers.slice(0,3).map(({slug,data})=>{
+    const name=slugToRaidName(slug); const summary=data.summary||'';
+    return `<div class="raid-tier-row"><div class="raid-tier-name">${escHtml(name)}</div><div class="raid-tier-progress ${getProgClass(summary)}">${escHtml(summary)}</div></div>`;
+  }).join('');
+  return `<div class="raid-prog"><div class="raid-prog-label">Raid Progress</div><div class="raid-prog-tiers">${rows}</div></div>`;
+}
+
+function slugToRaidName(slug) {
+  const MAP={'nerub-ar-palace':'Nerub-ar Palace','liberation-of-undermine':'Liberation of Undermine','amirdrassil-the-dreams-hope':'Amirdrassil','aberrus-the-shadowed-crucible':'Aberrus','vault-of-the-incarnates':'Vault of the Incarnates','awakened-raids':'Awakened Raids'};
+  return MAP[slug]||slug.replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+}
+function getProgClass(s) {
+  if(!s) return 'prog-none'; const l=s.toLowerCase();
+  if(l.includes('mythic')) return 'prog-mythic';
+  if(l.includes('heroic')) return 'prog-heroic';
+  if(l.includes('normal')) return 'prog-normal';
+  return 'prog-none';
+}
+
+// ═══════════════════════════════════
+//  RENDER DUNGEONS  (single Best Run + push indicator)
+// ═══════════════════════════════════
+function scoreColorClass(score) {
+  if(score>=3000) return 'score-mythic';
+  if(score>=2000) return 'score-epic';
+  if(score>=1000) return 'score-rare';
+  if(score>0)     return 'score-uncommon';
+  return 'score-none';
+}
+function upgradeArrows(n) { return ['','▲','▲▲','▲▲▲'][Math.min(n||0,3)]; }
+
+let highlightedDungeon=null;
+
+function renderDungeons(profiles) {
+  const valid=profiles.filter(Boolean);
+  const tableHeader=document.getElementById('tableHeader');
+  const rows=document.getElementById('dungeonRows');
+  highlightedDungeon=null;
+
+  // One column per character
+  const gridCols=`190px ${valid.map(()=>'1fr').join(' ')}`;
+
+  // Header row — character names in their class colour
+  tableHeader.style.gridTemplateColumns=gridCols;
+  const charHdrs=valid.map(p=>`<div style="text-align:center;color:${p.classColor};font-weight:700;font-size:12px">${escHtml(p.name)}</div>`).join('');
+  tableHeader.innerHTML=`<div style="color:var(--text-dim);font-size:11px">Dungeon</div>${charHdrs}`;
+
+  // Collect best run per char per dungeon (best of best_runs + alternate_runs combined)
+  const dungeonMap=new Map(); // name → Map(charIdx → bestRun)
+  valid.forEach((p,ci)=>{
+    const allRuns=[...(p.mythic_plus_best_runs||[]),...(p.mythic_plus_alternate_runs||[])];
+    allRuns.forEach(r=>{
+      if(!dungeonMap.has(r.dungeon)) dungeonMap.set(r.dungeon,new Map());
+      const existing=dungeonMap.get(r.dungeon).get(ci);
+      if(!existing||r.score>existing.score) dungeonMap.get(r.dungeon).set(ci,r);
+    });
+  });
+
+  if(!dungeonMap.size){rows.innerHTML='<div class="no-data">No dungeon data available</div>';return;}
+
+  rows.innerHTML='';
+  dungeonMap.forEach((charMap,name)=>{
+    const icon=DUNGEON_ICONS[name]||'🏰';
+
+    // Find the group's best key level for this dungeon (for push indicator)
+    let groupBest=0;
+    valid.forEach((_,ci)=>{ const r=charMap.get(ci); if(r&&r.mythic_level>groupBest) groupBest=r.mythic_level; });
+
+    const charCells=valid.map((_,ci)=>{
+      const run=charMap.get(ci);
+      return buildRunCell(run, groupBest);
+    }).join('');
+
+    const row=document.createElement('div');
+    row.className='dungeon-row fade-in'; row.dataset.dungeon=name;
+    row.style.gridTemplateColumns=gridCols;
+    row.innerHTML=`
+      <div class="dungeon-name">
+        <div class="dungeon-icon">${icon}</div>
+        <div class="dungeon-name-text" title="${escHtml(name)}">${escHtml(name)}</div>
+      </div>
+      ${charCells}`;
+    row.addEventListener('click',()=>toggleHighlight(name));
+    rows.appendChild(row);
+  });
+}
+
+function buildRunCell(run, groupBest) {
+  if(!run) {
+    // No run at all — missing entirely
+    const badge = groupBest>0
+      ? `<div class="push-badge push-missing">Not done</div>`
+      : '';
+    return `<div class="run-cell run-best"><div class="run-empty">—</div>${badge}</div>`;
+  }
+
+  const timed=run.num_keystone_upgrades>0;
+  const up=upgradeArrows(run.num_keystone_upgrades);
+  const gap=groupBest - run.mythic_level;
+
+  let badgeHtml='';
+  if(gap===0) {
+    badgeHtml=`<div class="push-badge push-leader">Best</div>`;
+  } else if(gap===1) {
+    badgeHtml=`<div class="push-badge push-close">-1</div>`;
+  } else if(gap>=2) {
+    badgeHtml=`<div class="push-badge push-behind">-${gap}</div>`;
+  }
+
+  return `<div class="run-cell run-best">
+    <div class="run-level ${timed?'timed':''}">+${run.mythic_level}</div>
+    ${up?`<div class="run-upgrades">${up}</div>`:''}
+    <div class="run-score ${scoreColorClass(run.score)}">${Math.round(run.score)}</div>
+    ${badgeHtml}
+  </div>`;
+}
+
+function toggleHighlight(name) {
+  const allRows=document.querySelectorAll('.dungeon-row');
+  if(highlightedDungeon===name){
+    allRows.forEach(r=>r.classList.remove('highlighted'));
+    highlightedDungeon=null;
+  } else {
+    allRows.forEach(r=>r.classList.toggle('highlighted',r.dataset.dungeon===name));
+    highlightedDungeon=name;
+  }
+}
+
+// ═══════════════════════════════════
+//  KEYBOARD
+// ═══════════════════════════════════
+document.getElementById('inputName').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('inputRealm').focus();});
+document.getElementById('inputRealm').addEventListener('keydown',e=>{if(e.key==='Enter')addCharacter();});
+document.getElementById('inputGroupName').addEventListener('keydown',e=>{if(e.key==='Enter')addGroup();});
+document.getElementById('renameInput').addEventListener('keydown',e=>{if(e.key==='Enter')confirmRename();if(e.key==='Escape')closeRenameModal();});
+document.getElementById('renameModal').addEventListener('click',e=>{if(e.target===document.getElementById('renameModal'))closeRenameModal();});
+
+// ═══════════════════════════════════
+//  INIT
+// ═══════════════════════════════════
+loadState(); renderSidebar(); loadAffixes();
+if(state.activeGroupId) loadActiveGroup(); else renderEmptyState();
+</script>
+</body>
+</html>
