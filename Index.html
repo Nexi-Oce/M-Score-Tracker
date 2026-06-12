@@ -325,7 +325,7 @@ body::before {
 </head>
 <body>
 
-<div class="loading-overlay" id="loadingOverlay">
+<div class="loading-overlay" id="loadingOverlay" style="display:none">
   <div class="spinner"></div>
   <div class="loading-text" id="loadingText">Loading…</div>
 </div>
@@ -626,8 +626,8 @@ function addCharacter() {
   const realm=document.getElementById('inputRealm').value.trim();
   const region=document.getElementById('inputRegion').value;
   const gid=document.getElementById('inputGroup').value;
-  if(!name||!realm) return;
-  const g=state.groups.find(g=>g.id===gid); if(!g) return;
+  if(!name||!realm||!gid) return;
+  const g=state.groups.find(g=>g.id===gid); if(!g||!g.id) return;
   if(g.chars.some(c=>c.name.toLowerCase()===name.toLowerCase()&&c.realm.toLowerCase()===realm.toLowerCase())){
     showError(`${name} on ${realm} is already in this group.`); return;
   }
@@ -641,7 +641,7 @@ function addCharacter() {
 }
 function removeChar(gid,ci,e) {
   e.stopPropagation();
-  const g=state.groups.find(g=>g.id===gid); if(!g) return;
+  const g=state.groups.find(g=>g.id===gid); if(!g||!g.chars[ci]) return;
   if(!confirm(`Remove ${g.chars[ci].name} from ${g.name}?`)) return;
   g.chars.splice(ci,1); saveState(); renderSidebar();
   if(state.activeGroupId===gid) loadActiveGroup();
@@ -759,6 +759,7 @@ function renderChars(profiles) {
 }
 
 function buildRaidProgHtml(raidProg) {
+  if(!raidProg||typeof raidProg!=='object') return '';
   const tiers=Object.entries(raidProg)
     .map(([slug,data])=>({slug,data}))
     .filter(e=>e.data&&e.data.summary&&e.data.summary!=='0/0');
@@ -800,6 +801,7 @@ function renderDungeons(profiles) {
   const valid=profiles.filter(Boolean);
   const tableHeader=document.getElementById('tableHeader');
   const rows=document.getElementById('dungeonRows');
+  if(!tableHeader||!rows) return;
   highlightedDungeon=null;
 
   // One column per character
@@ -815,6 +817,7 @@ function renderDungeons(profiles) {
   valid.forEach((p,ci)=>{
     const allRuns=[...(p.mythic_plus_best_runs||[]),...(p.mythic_plus_alternate_runs||[])];
     allRuns.forEach(r=>{
+      if(!r||!r.dungeon) return;
       if(!dungeonMap.has(r.dungeon)) dungeonMap.set(r.dungeon,new Map());
       const existing=dungeonMap.get(r.dungeon).get(ci);
       if(!existing||r.score>existing.score) dungeonMap.get(r.dungeon).set(ci,r);
